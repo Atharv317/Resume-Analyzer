@@ -53,6 +53,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "backend.urls"
 
+REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+    ]
+}
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -117,3 +124,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+
+MEDIA_ROOT = 'media/'
+MEDIA_URL = '/media/'
