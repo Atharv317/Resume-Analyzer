@@ -1,0 +1,17 @@
+numpy
+pandas
+scikit-learn
+nltk
+spacy
+gensim
+torch
+transformers
+PyPDF2
+pdfminer.six
+python-docx
+joblib
+faiss-cpu
+tqdm
+matplotlib
+seaborn
+xgboost
