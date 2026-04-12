@@ -1,21 +1,31 @@
 from django.shortcuts import render
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
-from .utils import extract_skills
-from .models import Resume
-from .serializers import ResumeSerializer
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
 import PyPDF2
 import docx
+import sys
+import os
 
+# 🔥 ML PATH SETUP
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(BASE_DIR, "ML"))
+
+from src.predict import predict_resume
+
+
+# 🧪 TEST API
 @api_view(['GET'])
 def test_api(request):
     return Response({"message": "Hurray IT is working"})
 
+
+# 📄 TEXT EXTRACTION
 def extract_text(file):
     if file.name.endswith('.pdf'):
         reader = PyPDF2.PdfReader(file)
-        text =""
+        text = ""
         for page in reader.pages:
             text += page.extract_text() or ""
         return text
@@ -24,9 +34,12 @@ def extract_text(file):
         doc = docx.Document(file)
         return "\n".join([p.text for p in doc.paragraphs])
 
-    return "Invalid File! Please Provide either PDF or Docx File"
+    return ""
 
+
+# 📤 UPLOAD + SKILL PREVIEW
 @api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser])
 def upload_resume(request):
     file = request.FILES.get('file')
 
@@ -35,10 +48,53 @@ def upload_resume(request):
 
     text = extract_text(file)
 
-    skills = extract_skills(text)
+    if not text:
+        return Response({"error": "Invalid or empty file"})
 
     return Response({
-        "message": "Uploaded",
-        "text_preview": text[:500],
-        "skills":skills,
+        "message": "Uploaded successfully",
+        "text_preview": text[:500]
     })
+
+
+# 🤖 MAIN ANALYSIS API
+@api_view(['POST'])
+@parser_classes([JSONParser, MultiPartParser, FormParser])
+def analyze_resume(request):
+
+    # 🔥 FILE OR TEXT SUPPORT
+    file = request.FILES.get("file")
+
+    if file:
+        resume_text = extract_text(file)
+    else:
+        resume_text = request.data.get("resume_text")
+
+    if not resume_text:
+        return Response({"error": "No resume text provided"})
+
+    # 📊 STRUCTURED DATA
+    user_data = {
+        "age": float(request.data.get("age", 0)),
+        "education_level": float(request.data.get("education_level", 0)),
+        "cgpa": float(request.data.get("cgpa", 0)),
+        "internships": float(request.data.get("internships", 0)),
+        "projects": float(request.data.get("projects", 0)),
+        "programming_languages": float(request.data.get("programming_languages", 0)),
+        "certifications": float(request.data.get("certifications", 0)),
+        "experience_years": float(request.data.get("experience_years", 0)),
+        "hackathons": float(request.data.get("hackathons", 0)),
+        "research_papers": float(request.data.get("research_papers", 0)),
+        "skills_score": float(request.data.get("skills_score", 0)),
+        "soft_skills_score": float(request.data.get("soft_skills_score", 0)),
+        "resume_length_words": float(request.data.get("resume_length_words", 0)),
+        "university_tier_2": float(request.data.get("university_tier_2", 0)),
+        "university_tier_3": float(request.data.get("university_tier_3", 0)),
+        "company_type_mid": float(request.data.get("company_type_mid", 0)),
+        "company_type_startup": float(request.data.get("company_type_startup", 0)),
+    }
+
+    # 🤖 ML PREDICTION
+    result = predict_resume(resume_text, user_data)
+
+    return Response(result)
