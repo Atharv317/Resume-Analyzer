@@ -29,7 +29,9 @@ def extract_text(file):
             reader = PyPDF2.PdfReader(file)
             text = ""
             for page in reader.pages:
-                text += page.extract_text() or ""
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
             return text.strip()
 
         elif file.name.endswith('.docx'):
@@ -59,7 +61,7 @@ def upload_resume(request):
 
     return Response({
         "message": "Uploaded successfully",
-        "text_preview": text[:500]
+        "text_preview": text
     })
 
 
@@ -74,7 +76,7 @@ def analyze_resume(request):
         resume_text = request.data.get("resume_text")
 
     if resume_text is None:
-        return Response({"error":"Please upload a valid PDF or DOCX file"}, status=400)
+        return Response({"error": "Please upload a valid PDF or DOCX file"}, status=400)
 
     if not resume_text:
         return Response({"error": "No resume text provided"}, status=400)
@@ -90,9 +92,7 @@ def analyze_resume(request):
         "experience_years": float(request.data.get("experience_years", 0)),
         "hackathons": float(request.data.get("hackathons", 0)),
         "research_papers": float(request.data.get("research_papers", 0)),
-        "skills_score": float(request.data.get("skills_score", 0)),
         "soft_skills_score": float(request.data.get("soft_skills_score", 0)),
-        "resume_length_words": float(request.data.get("resume_length_words", 0)),
         "university_tier_2": float(request.data.get("university_tier_2", 0)),
         "university_tier_3": float(request.data.get("university_tier_3", 0)),
         "company_type_mid": float(request.data.get("company_type_mid", 0)),

@@ -19,7 +19,6 @@ with open(os.path.join(MODEL_DIR, "threshold.txt")) as f:
 def build_features(resume_text, user_data):
     result = process_resume(resume_text)
     skills = result["skills"]
-    skills_vector = result["vector"]
 
     age = user_data.get("age", 0)
     education_level = user_data.get("education_level", 0)
@@ -29,10 +28,10 @@ def build_features(resume_text, user_data):
     programming_languages = user_data.get("programming_languages", 0)
     certifications = user_data.get("certifications", 0)
     experience_years = user_data.get("experience_years", 0)
-    hackathons = user_data.get("hackathons", 0)
-    research_papers = user_data.get("research_papers", 0)
     soft_skills_score = user_data.get("soft_skills_score", 0)
-    resume_length_words = user_data.get("resume_length_words", 0)
+
+    resume_length_words = len(resume_text.split())
+
     university_tier_2 = user_data.get("university_tier_2", 0)
     university_tier_3 = user_data.get("university_tier_3", 0)
     company_type_mid = user_data.get("company_type_mid", 0)
@@ -62,8 +61,6 @@ def build_features(resume_text, user_data):
         programming_languages,
         certifications,
         experience_years,
-        hackathons,
-        research_papers,
         skills_score,
         soft_skills_score,
         resume_length_words,
@@ -82,16 +79,21 @@ def build_features(resume_text, user_data):
         skills_x_soft
     ]
 
-    final_features = structured + skills_vector
+    return structured, skills
 
-    return final_features, skills
 
 def predict_resume(resume_text, user_data):
     features, skills = build_features(resume_text, user_data)
+
+    if len(features) != len(columns):
+        raise ValueError(f"Feature mismatch: expected {len(columns)}, got {len(features)}")
+
     feature_dict = dict(zip(columns, features))
     ordered_features = [feature_dict[col] for col in columns]
+
     arr = np.array([ordered_features])
     arr = scaler.transform(arr)
+
     prob = model.predict_proba(arr)[0][1]
 
     return {
