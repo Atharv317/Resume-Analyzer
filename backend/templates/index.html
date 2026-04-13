@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Resume Analyzer</title>
+    <style>
+        body { font-family: Arial; padding: 40px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+        button { padding: 10px 20px; background: black; color: white; border: none; cursor: pointer; }
+        textarea, input { width: 100%; margin: 10px 0; padding: 10px; }
+        .result { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🚀 AI Resume Analyzer</h2>
+
+    <textarea id="resume_text" placeholder="Paste resume text here..."></textarea>
+
+    <input type="file" id="file">
+
+    <input type="number" id="age" placeholder="Age">
+    <input type="number" id="cgpa" placeholder="CGPA">
+
+    <button onclick="analyze()">Analyze</button>
+
+    <div class="result" id="result"></div>
+</div>
+
+<script>
+async function analyze() {
+    let fileInput = document.getElementById("file").files[0];
+    let text = document.getElementById("resume_text").value;
+
+    if (!fileInput && !text.trim()) {
+        alert("Upload file or paste resume text");
+        return;
+    }
+
+    let formData = new FormData();
+
+    if (fileInput) {
+        formData.append("file", fileInput);
+    } else {
+        formData.append("resume_text", text);
+    }
+
+    formData.append("age", document.getElementById("age").value);
+    formData.append("cgpa", document.getElementById("cgpa").value);
+
+    let response = await fetch("/api/analyze/", {
+        method: "POST",
+        body: formData
+    });
+
+    let data = await response.json();
+
+    if (!response.ok) {
+        document.getElementById("result").innerHTML = `
+            <p style="color:red; font-weight:bold;">
+                ${data.error}
+            </p>
+        `;
+    }
+
+    document.getElementById("result").innerHTML = `
+        <h3>Score: ${data.score}</h3>
+        <h4>Selected: ${data.selected}</h4>
+        <p>Skills: ${data.skills ? data.skills.join(", ") : "N/A"}</p>
+    `;
+}
+</script>
+
+</body>
+</html>
