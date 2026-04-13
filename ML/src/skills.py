@@ -6,7 +6,7 @@ SKILLS = [
     "machine learning", "deep learning", "nlp",
     "tensorflow", "pytorch", "sklearn",
     "sql", "mongodb", "mysql",
-    "data analysis", "pandas", "numpy","c#",
+    "data analysis", "pandas", "numpy", "c#"
 ]
 
 SYNONYMS = {
@@ -17,43 +17,34 @@ SYNONYMS = {
     "pd": "pandas"
 }
 
-
 def clean_text(text):
     text = text.lower()
-    text = re.sub(r'[^a-zA-Z0-9\s+]', ' ', text)
+    text = re.sub(r'[^a-zA-Z0-9\s+#]', ' ', text)
     return text
-
 
 def normalize_text(text):
     words = text.split()
-    normalized_words = []
-
+    normalized = []
     for word in words:
-        if word in SYNONYMS:
-            normalized_words.append(SYNONYMS[word])
-        else:
-            normalized_words.append(word)
-
-    return " ".join(normalized_words)
-
+        normalized.append(SYNONYMS.get(word, word))
+    return " ".join(normalized)
 
 def extract_skills(text):
     text = clean_text(text)
     text = normalize_text(text)
 
-    found_skills = []
+    found = set()
 
     for skill in SKILLS:
         pattern = r'\b' + re.escape(skill) + r'\b'
         if re.search(pattern, text):
-            found_skills.append(skill)
+            found.add(skill)
 
-    return list(set(found_skills))
-
+    return list(found)
 
 def skills_to_vector(found_skills):
-    return [1 if skill in found_skills else 0 for skill in SKILLS]
-
+    skill_set = set(found_skills)
+    return [1 if skill in skill_set else 0 for skill in SKILLS]
 
 def process_resume(text):
     skills = extract_skills(text)
