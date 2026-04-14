@@ -11,87 +11,162 @@ STOPWORDS = set([
 
 
 def validate_resume(text):
+    try:
+        raw_clean = re.sub(r'<[^>]+>', '', text)
+        raw_clean = raw_clean.strip()
 
-    raw_clean = re.sub(r'<[^>]+>', '', text)
-    clean = re.sub(r'[^a-zA-Z]', '', raw_clean)
+        words_raw = re.findall(r'[a-zA-Z]+', raw_clean)
+        unique_raw_words = set(words_raw)
 
-    if len(clean) < 5:
-        return {
-            "is_resume": False,
-            "confidence": 0,
-            "details": {
-                "word_count": 0,
-                "unique_ratio": 0,
-                "max_repeat": 0,
-                "repeat_ratio": 0,
-                "keywords_found": 0,
-                "skills_found": 0,
-                "spam_detected": False,
-                "reason": "Empty input"
+        if not raw_clean or len(words_raw) == 0:
+            return {
+                "is_resume": False,
+                "error_type": "empty",
+                "confidence": 0,
+                "details": {
+                    "word_count": 0,
+                    "reason": "Empty input"
+                }
             }
-        }
 
-    text = re.sub(r'<[^>]+>', ' ', text)
-    text_lower = text.lower()
+        if len(unique_raw_words) <= 1:
+            return {
+                "is_resume": False,
+                "error_type": "empty",
+                "confidence": 0,
+                "details": {
+                    "word_count": len(words_raw),
+                    "reason": "No meaningful content"
+                }
+            }
 
-    words = re.findall(r'\b[a-zA-Z]+\b', text_lower)
-    filtered_words = [w for w in words if w not in STOPWORDS]
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text_lower = text.lower()
 
-    word_count = len(filtered_words)
+        words = re.findall(r'\b[a-zA-Z]+\b', text_lower)
+        filtered_words = [w for w in words if w not in STOPWORDS]
 
-    word_freq = Counter(filtered_words)
-    unique_words = len(word_freq)
+        word_count = len(filtered_words)
 
-    keyword_score = sum(1 for kw in KEYWORDS if re.search(rf'\b{kw}\b', text_lower))
+        if word_count == 0:
+            return {
+                "is_resume": False,
+                "error_type": "empty",
+                "confidence": 0,
+                "details": {
+                    "word_count": 0,
+                    "reason": "No meaningful content"
+                }
+            }
 
-    skill_hits = 0
-    seen = set()
-    for skill in COMMON_SKILLS:
-        if re.search(rf'\b{re.escape(skill)}\b', text_lower):
-            if skill == "ml" and "machine learning" in text_lower:
-                continue
-            if skill not in seen:
-                skill_hits += 1
-                seen.add(skill)
+        word_freq = Counter(filtered_words)
+        unique_words = len(word_freq)
 
-    has_email = bool(re.search(r'\S+@\S+', text))
-    has_phone = bool(re.search(r'\b\d{10}\b', text))
+        unique_ratio = unique_words / (word_count + 1)
+        max_repeat = max(word_freq.values()) if word_freq else 0
+        repeat_ratio = max_repeat / (word_count + 1)
 
-    unique_ratio = unique_words / (word_count + 1)
-    max_repeat = max(word_freq.values()) if word_freq else 0
-    repeat_ratio = max_repeat / (word_count + 1)
+        keyword_score = sum(
+            1 for kw in KEYWORDS if re.search(rf'\b{kw}\b', text_lower)
+        )
 
-    sentence_like = bool(re.search(r'\b(i|worked|developed|built|designed)\b', text_lower))
-    bullet_points = len(re.findall(r'•|-|\*', text))
+        skill_hits = 0
+        seen = set()
 
-    score = 0
+        for skill in COMMON_SKILLS:
+            if re.search(rf'\b{re.escape(skill)}\b', text_lower):
+                if skill == "ml" and "machine learning" in text_lower:
+                    continue
+                if skill not in seen:
+                    skill_hits += 1
+                    seen.add(skill)
 
-    if word_count > 80 or (word_count > 20 and keyword_score >= 3):
-        score += 1
+        has_email = bool(re.search(r'\S+@\S+', text))
+        has_phone = bool(re.search(r'(\+?\d{1,3}[-\s]?)?\d{10}', text))
 
-    if keyword_score >= 2:
-        score += 1
+        sentence_like = bool(
+            re.search(r'\b(i|worked|developed|built|designed)\b', text_lower)
+        )
 
-    if has_email or has_phone:
-        score += 1
+        bullet_points = len(re.findall(r'•|-|\*', text))
 
-    if skill_hits >= 2:
-        score += 1
+        has_structure = keyword_score >= 1 or skill_hits >= 1 or sentence_like
 
-    if sentence_like or bullet_points >= 2:
-        score += 1
+        if not has_structure:
+            return {
+                "is_resume": False,
+                "error_type": "invalid_format",
+                "confidence": 0,
+                "details": {
+                    "word_count": word_count,
+                    "reason": "Not a resume"
+                }
+            }
 
-    spam_flag = False
+        score = 0
 
-    if repeat_ratio > 0.3 and word_count > 10:
-        spam_flag = True
+        if word_count > 80 or (word_count > 20 and keyword_score >= 3):
+            score += 1
 
-    if unique_ratio < 0.25 and word_count > 15:
-        spam_flag = True
+        if keyword_score >= 2:
+            score += 1
 
-    if word_count < 15:
+        if has_email or has_phone:
+            score += 1
+
+        if skill_hits >= 2:
+            score += 1
+
+        if sentence_like or bullet_points >= 2:
+            score += 1
+
+        if word_count < 10:
+            return {
+                "is_resume": False,
+                "error_type": "too_short",
+                "confidence": round(score / 5, 2),
+                "details": {
+                    "word_count": word_count,
+                    "reason": "Too short"
+                }
+            }
+
+        spam_flag = False
+
+        if repeat_ratio > 0.3:
+            spam_flag = True
+
+        if unique_ratio < 0.25:
+            spam_flag = True
+
+        if spam_flag:
+            return {
+                "is_resume": False,
+                "error_type": "spam",
+                "confidence": round(score / 5, 2),
+                "details": {
+                    "word_count": word_count,
+                    "spam_detected": True,
+                    "reason": "Spam detected"
+                }
+            }
+
+        if word_count < 30:
+            return {
+                "is_resume": False,
+                "error_type": "insufficient_content",
+                "confidence": round(score / 5, 2),
+                "details": {
+                    "word_count": word_count,
+                    "reason": "Insufficient content"
+                }
+            }
+
+        is_resume = (score >= 3)
+
         return {
-            "is_resume": False,
+            "is_resume": is_resume,
+            "error_type": None if is_resume else "invalid_format",
             "confidence": round(score / 5, 2),
             "details": {
                 "word_count": word_count,
@@ -100,23 +175,16 @@ def validate_resume(text):
                 "repeat_ratio": round(repeat_ratio, 2),
                 "keywords_found": keyword_score,
                 "skills_found": skill_hits,
-                "spam_detected": False,
-                "reason": "Too short / insufficient content"
+                "spam_detected": False
             }
         }
 
-    is_resume = (score >= 3) and not spam_flag
-
-    return {
-        "is_resume": is_resume,
-        "confidence": round(score / 5, 2),
-        "details": {
-            "word_count": word_count,
-            "unique_ratio": round(unique_ratio, 2),
-            "max_repeat": max_repeat,
-            "repeat_ratio": round(repeat_ratio, 2),
-            "keywords_found": keyword_score,
-            "skills_found": skill_hits,
-            "spam_detected": spam_flag
+    except Exception as e:
+        return {
+            "is_resume": False,
+            "error_type": "processing_error",
+            "confidence": 0,
+            "details": {
+                "reason": str(e)
+            }
         }
-    }

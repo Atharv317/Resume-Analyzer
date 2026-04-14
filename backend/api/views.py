@@ -12,6 +12,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.append(os.path.join(BASE_DIR, "ML"))
 
 from src.predict import predict_resume
+from src.validation import validate_resume
 
 
 @api_view(['GET'])
@@ -20,7 +21,7 @@ def test_api(request):
 
 
 def home(request):
-    return render(request,'index.html')
+    return render(request, 'index.html')
 
 
 def extract_text(file):
@@ -38,12 +39,7 @@ def extract_text(file):
             doc = docx.Document(file)
             text = "\n".join([p.text for p in doc.paragraphs])
 
-        text = text.strip()
-        
-        if len(text) < 30:
-            return None
-
-        return text
+        return text.strip()
 
     except:
         return None
@@ -62,7 +58,7 @@ def upload_resume(request):
     if text is None:
         return Response({"error": "Invalid file format. Upload PDF or DOCX"}, status=400)
 
-    if not text:
+    if not text.strip():
         return Response({"error": "Empty or unreadable file"}, status=400)
 
     return Response({
@@ -84,25 +80,48 @@ def analyze_resume(request):
     if resume_text is None:
         return Response({"error": "Please upload a valid PDF or DOCX file"}, status=400)
 
+    resume_text = str(resume_text).strip()
+
     if not resume_text:
-        return Response({"error": "No resume text provided"}, status=400)
+        return Response({
+            "error": "Empty resume",
+            "type": "empty",
+            "confidence": 0,
+            "details": {"word_count": 0}
+        })
+
+    validation = validate_resume(resume_text)
+
+    if not validation["is_resume"]:
+        return Response({
+            "error": validation["details"].get("reason", "Invalid resume"),
+            "type": validation.get("error_type"),
+            "confidence": validation.get("confidence", 0),
+            "details": validation.get("details", {})
+        })
+
+    def to_float(val):
+        try:
+            return float(val)
+        except:
+            return 0.0
 
     user_data = {
-        "age": float(request.data.get("age", 0)),
-        "education_level": float(request.data.get("education_level", 0)),
-        "cgpa": float(request.data.get("cgpa", 0)),
-        "internships": float(request.data.get("internships", 0)),
-        "projects": float(request.data.get("projects", 0)),
-        "programming_languages": float(request.data.get("programming_languages", 0)),
-        "certifications": float(request.data.get("certifications", 0)),
-        "experience_years": float(request.data.get("experience_years", 0)),
-        "hackathons": float(request.data.get("hackathons", 0)),
-        "research_papers": float(request.data.get("research_papers", 0)),
-        "soft_skills_score": float(request.data.get("soft_skills_score", 0)),
-        "university_tier_2": float(request.data.get("university_tier_2", 0)),
-        "university_tier_3": float(request.data.get("university_tier_3", 0)),
-        "company_type_mid": float(request.data.get("company_type_mid", 0)),
-        "company_type_startup": float(request.data.get("company_type_startup", 0)),
+        "age": to_float(request.data.get("age")),
+        "education_level": to_float(request.data.get("education_level")),
+        "cgpa": to_float(request.data.get("cgpa")),
+        "internships": to_float(request.data.get("internships")),
+        "projects": to_float(request.data.get("projects")),
+        "programming_languages": to_float(request.data.get("programming_languages")),
+        "certifications": to_float(request.data.get("certifications")),
+        "experience_years": to_float(request.data.get("experience_years")),
+        "hackathons": to_float(request.data.get("hackathons")),
+        "research_papers": to_float(request.data.get("research_papers")),
+        "soft_skills_score": to_float(request.data.get("soft_skills_score")),
+        "university_tier_2": to_float(request.data.get("university_tier_2")),
+        "university_tier_3": to_float(request.data.get("university_tier_3")),
+        "company_type_mid": to_float(request.data.get("company_type_mid")),
+        "company_type_startup": to_float(request.data.get("company_type_startup")),
     }
 
     result = predict_resume(resume_text, user_data)

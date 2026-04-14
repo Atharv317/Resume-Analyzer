@@ -39,9 +39,7 @@
 <script>
 
 function cleanText(text) {
-    text = text.replace(/<[^>]*>/g, " ");
-    text = text.replace(/\s+/g, " ").trim();
-    return text;
+    return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 async function uploadResume() {
@@ -67,7 +65,7 @@ async function uploadResume() {
 
         let data = await response.json();
 
-        if (data.text_preview && data.text_preview.length > 30) {
+        if (data.text_preview) {
             document.getElementById("resume_text").value = cleanText(data.text_preview);
             document.getElementById("result").innerHTML = "<div class='result success'>✅ Uploaded successfully</div>";
         } else {
@@ -126,22 +124,24 @@ async function analyze() {
         return;
     }
 
-    if (data.validation?.details?.reason === "Empty input") {
-        document.getElementById("result").innerHTML =
-            "<div class='result error'><h3>❌ Empty resume</h3></div>";
-        return;
-    }
+    if (data.error) {
+        let type = data.type || "";
+        let spam = data.details?.spam_detected;
 
-    if (data.error && data.validation) {
+        let msg = data.error;
 
-        let spam = data.validation.details?.spam_detected;
+        if (type === "empty") msg = "Empty resume";
+        else if (type === "too_short") msg = "Resume too short";
+        else if (type === "insufficient_content") msg = "Insufficient content";
+        else if (type === "invalid_format") msg = "Invalid resume format";
+        else if (type === "spam") msg = "Spam detected";
 
         document.getElementById("result").innerHTML = `
             <div class='result error'>
-                <h3>❌ ${data.error}</h3>
+                <h3>❌ ${msg}</h3>
                 ${spam ? "<p><b>⚠️ Spam detected</b></p>" : ""}
-                <p>Confidence: ${data.validation.confidence}</p>
-                <p>Words: ${data.validation.details.word_count}</p>
+                <p>Confidence: ${data.confidence || 0}</p>
+                <p>Words: ${data.details?.word_count || 0}</p>
             </div>
         `;
         return;
@@ -150,14 +150,14 @@ async function analyze() {
     let warn = "";
     let cls = "success";
 
-    if (data.validation && data.validation.confidence < 0.6) {
+    if (data.confidence && data.confidence < 0.6) {
         warn = "<p><b>⚠️ Low quality resume</b></p>";
         cls = "warning";
     }
 
     document.getElementById("result").innerHTML = `
         <div class='result ${cls}'>
-            <h3>Score: ${data.score}%</h3>
+            <h3>Score: ${data.score || 0}%</h3>
             <h4>${data.selected ? "✅ Selected" : "❌ Rejected"}</h4>
             ${warn}
             <p><b>Skills:</b> ${(data.skills && data.skills.length) ? data.skills.join(", ") : "No skills detected"}</p>
