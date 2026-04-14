@@ -3,6 +3,7 @@ import joblib
 import json
 import numpy as np
 from src.skills import process_resume
+from src.validation import validate_resume
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "../models")
@@ -15,6 +16,7 @@ with open(os.path.join(MODEL_DIR, "columns.json")) as f:
 
 with open(os.path.join(MODEL_DIR, "threshold.txt")) as f:
     threshold = float(f.read())
+
 
 def build_features(resume_text, user_data):
     result = process_resume(resume_text)
@@ -83,6 +85,14 @@ def build_features(resume_text, user_data):
 
 
 def predict_resume(resume_text, user_data):
+    validation = validate_resume(resume_text)
+
+    if not validation["is_resume"]:
+        return {
+            "error": "Invalid resume format",
+            "validation": validation
+        }
+
     features, skills = build_features(resume_text, user_data)
 
     if len(features) != len(columns):
@@ -99,5 +109,6 @@ def predict_resume(resume_text, user_data):
     return {
         "score": float(round(prob * 100, 2)),
         "selected": bool(prob > threshold),
-        "skills": skills
+        "skills": skills,
+        "validation": validation
     }

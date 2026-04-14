@@ -4,12 +4,15 @@
     <title>AI Resume Analyzer</title>
     <style>
         body { font-family: Arial; padding: 40px; background: #f5f5f5; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
-        button { padding: 10px 20px; background: black; color: white; border: none; cursor: pointer; margin-top: 10px; }
-        textarea, input { width: 100%; margin: 10px 0; padding: 10px; }
-        .result { margin-top: 20px; }
-        .section { margin-top: 20px; }
+        .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        button { padding: 10px 20px; background: black; color: white; border: none; cursor: pointer; margin-top: 10px; border-radius: 6px; }
+        button:hover { background: #333; }
+        textarea, input { width: 100%; margin: 10px 0; padding: 10px; border-radius: 6px; border: 1px solid #ccc; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 10px; }
         .loading { color: blue; }
+        .success { background: #e6ffed; }
+        .error { background: #ffe6e6; }
+        .warning { background: #fff4e5; }
     </style>
 </head>
 <body>
@@ -17,19 +20,16 @@
 <div class="container">
     <h2>🚀 AI Resume Analyzer</h2>
 
-    <div class="section">
-        <textarea id="resume_text" placeholder="Paste resume text here..." rows="10"></textarea>
-    </div>
+    <textarea id="resume_text" placeholder="Paste resume text here..." rows="10"></textarea>
 
-    <div class="section">
-        <input type="file" id="file">
-        <button onclick="uploadResume()">Upload Resume</button>
-    </div>
+    <input type="file" id="file">
+    <button onclick="uploadResume()">Upload Resume</button>
 
-    <div class="section">
-        <input type="number" id="age" placeholder="Age">
-        <input type="number" step="0.01" id="cgpa" placeholder="CGPA">
-    </div>
+    <input type="number" id="age" placeholder="Age">
+    <input type="number" step="0.01" id="cgpa" placeholder="CGPA">
+    <input type="number" id="projects" placeholder="Projects">
+    <input type="number" id="internships" placeholder="Internships">
+    <input type="number" id="experience_years" placeholder="Experience (years)">
 
     <button onclick="analyze()">Analyze</button>
 
@@ -37,6 +37,12 @@
 </div>
 
 <script>
+
+function cleanText(text) {
+    text = text.replace(/<[^>]*>/g, " ");
+    text = text.replace(/\s+/g, " ").trim();
+    return text;
+}
 
 async function uploadResume() {
     let fileInput = document.getElementById("file").files[0];
@@ -49,61 +55,113 @@ async function uploadResume() {
     let formData = new FormData();
     formData.append("file", fileInput);
 
-    document.getElementById("result").innerHTML = "<p class='loading'>Uploading & extracting...</p>";
+    document.getElementById("result").innerHTML = "<p class='loading'>Uploading...</p>";
 
-    let response = await fetch("/api/upload/", {
-        method: "POST",
-        body: formData
-    });
+    try {
+        let response = await fetch("/api/upload/", {
+            method: "POST",
+            body: formData
+        });
 
-    let data = await response.json();
+        if (!response.ok) throw new Error();
 
-    if (data.text_preview) {
-        document.getElementById("resume_text").value = data.text_preview;
-        document.getElementById("result").innerHTML = "<p>✅ Resume uploaded & extracted successfully</p>";
-    } else {
-        document.getElementById("result").innerHTML = "<p style='color:red'>" + JSON.stringify(data) + "</p>";
+        let data = await response.json();
+
+        if (data.text_preview && data.text_preview.length > 30) {
+            document.getElementById("resume_text").value = cleanText(data.text_preview);
+            document.getElementById("result").innerHTML = "<div class='result success'>✅ Uploaded successfully</div>";
+        } else {
+            throw new Error();
+        }
+
+    } catch {
+        document.getElementById("result").innerHTML = "<div class='result error'>❌ Upload failed</div>";
     }
 }
 
 async function analyze() {
     let fileInput = document.getElementById("file").files[0];
-    let resumeText = document.getElementById("resume_text").value;
+    let resumeText = cleanText(document.getElementById("resume_text").value);
 
-    if (!fileInput && !resumeText.trim()) {
-        alert("Upload file or paste resume text");
+    if (!fileInput && !resumeText) {
+        document.getElementById("result").innerHTML =
+            "<div class='result error'><h3>❌ Please upload or paste resume</h3></div>";
         return;
     }
 
     let formData = new FormData();
 
-    if (fileInput) {
-        formData.append("file", fileInput);
-    } else {
-        formData.append("resume_text", resumeText);
-    }
+    if (fileInput) formData.append("file", fileInput);
+    else formData.append("resume_text", resumeText);
 
     formData.append("age", document.getElementById("age").value || 0);
     formData.append("cgpa", document.getElementById("cgpa").value || 0);
+    formData.append("projects", document.getElementById("projects").value || 0);
+    formData.append("internships", document.getElementById("internships").value || 0);
+    formData.append("experience_years", document.getElementById("experience_years").value || 0);
 
     document.getElementById("result").innerHTML = "<p class='loading'>Analyzing resume...</p>";
 
-    let response = await fetch("/api/analyze/", {
-        method: "POST",
-        body: formData
-    });
+    let response, data;
 
-    let data = await response.json();
+    try {
+        response = await fetch("/api/analyze/", {
+            method: "POST",
+            body: formData
+        });
 
-    if (data.error) {
-        document.getElementById("result").innerHTML = "<p style='color:red'>" + data.error + "</p>";
+        if (!response.ok) throw new Error();
+
+    } catch {
+        document.getElementById("result").innerHTML =
+            "<div class='result error'><h3>❌ Cannot connect to server</h3></div>";
         return;
     }
 
+    try {
+        data = await response.json();
+    } catch {
+        document.getElementById("result").innerHTML =
+            "<div class='result error'><h3>❌ Server error</h3></div>";
+        return;
+    }
+
+    if (data.validation?.details?.reason === "Empty input") {
+        document.getElementById("result").innerHTML =
+            "<div class='result error'><h3>❌ Empty resume</h3></div>";
+        return;
+    }
+
+    if (data.error && data.validation) {
+
+        let spam = data.validation.details?.spam_detected;
+
+        document.getElementById("result").innerHTML = `
+            <div class='result error'>
+                <h3>❌ ${data.error}</h3>
+                ${spam ? "<p><b>⚠️ Spam detected</b></p>" : ""}
+                <p>Confidence: ${data.validation.confidence}</p>
+                <p>Words: ${data.validation.details.word_count}</p>
+            </div>
+        `;
+        return;
+    }
+
+    let warn = "";
+    let cls = "success";
+
+    if (data.validation && data.validation.confidence < 0.6) {
+        warn = "<p><b>⚠️ Low quality resume</b></p>";
+        cls = "warning";
+    }
+
     document.getElementById("result").innerHTML = `
-        <h3>Score: ${data.score}%</h3>
-        <h4>Status: ${data.selected ? "✅ Selected" : "❌ Rejected"}</h4>
-        <p><b>Skills:</b> ${data.skills.length ? data.skills.join(", ") : "No skills detected"}</p>
+        <div class='result ${cls}'>
+            <h3>Score: ${data.score}%</h3>
+            <h4>${data.selected ? "✅ Selected" : "❌ Rejected"}</h4>
+            ${warn}
+            <p><b>Skills:</b> ${(data.skills && data.skills.length) ? data.skills.join(", ") : "No skills detected"}</p>
+        </div>
     `;
 }
 
