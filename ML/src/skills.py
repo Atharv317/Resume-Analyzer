@@ -14,20 +14,29 @@ SYNONYMS = {
     "dl": "deep learning",
     "ai": "machine learning",
     "np": "numpy",
-    "pd": "pandas"
+    "pd": "pandas",
+    "js": "javascript",
+    "nodejs": "node",
+    "reactjs": "react"
 }
+
 
 def clean_text(text):
     text = text.lower()
     text = re.sub(r'[^a-zA-Z0-9\s+#]', ' ', text)
-    return text
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
 
 def normalize_text(text):
     words = text.split()
     normalized = []
+
     for word in words:
         normalized.append(SYNONYMS.get(word, word))
+
     return " ".join(normalized)
+
 
 def extract_skills(text):
     text = clean_text(text)
@@ -40,17 +49,19 @@ def extract_skills(text):
         if re.search(pattern, text):
             found.add(skill)
 
-    return list(found)
+    return sorted(found)
+
 
 def skills_to_vector(found_skills):
     skill_set = set(found_skills)
     return [1 if skill in skill_set else 0 for skill in SKILLS]
 
+
 def process_resume(text):
     skills = extract_skills(text)
-    vector = skills_to_vector(skills)
 
     return {
         "skills": skills,
-        "vector": vector
+        "vector": skills_to_vector(skills),
+        "count": len(skills)
     }

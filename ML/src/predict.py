@@ -3,7 +3,6 @@ import joblib
 import json
 import numpy as np
 from src.skills import process_resume
-from src.validation import validate_resume
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "../models")
@@ -18,9 +17,8 @@ with open(os.path.join(MODEL_DIR, "threshold.txt")) as f:
     threshold = float(f.read())
 
 
-def build_features(resume_text, user_data):
-    result = process_resume(resume_text)
-    skills = result["skills"]
+def build_features(resume_text, user_data, extracted):
+    skills = process_resume(resume_text)["skills"]
 
     age = user_data.get("age", 0)
     education_level = user_data.get("education_level", 0)
@@ -54,61 +52,59 @@ def build_features(resume_text, user_data):
     exp_x_internships = experience_years * internships
     skills_x_soft = skills_score * soft_skills_score
 
-    structured = [
-        age,
-        education_level,
-        cgpa,
-        internships,
-        projects,
-        programming_languages,
-        certifications,
-        experience_years,
-        skills_score,
-        soft_skills_score,
-        resume_length_words,
-        university_tier_2,
-        university_tier_3,
-        company_type_mid,
-        company_type_startup,
-        cgpa_high,
-        cgpa_low,
-        exp_high,
-        exp_fresher,
-        skill_density,
-        cgpa_x_skills,
-        exp_x_projects,
-        exp_x_internships,
-        skills_x_soft
-    ]
+    feature_dict = {
+        "age": age,
+        "education_level": education_level,
+        "cgpa": cgpa,
+        "internships": internships,
+        "projects": projects,
+        "programming_languages": programming_languages,
+        "certifications": certifications,
+        "experience_years": experience_years,
+        "skills_score": skills_score,
+        "soft_skills_score": soft_skills_score,
+        "resume_length_words": resume_length_words,
+        "university_tier_Tier 2": university_tier_2,
+        "university_tier_Tier 3": university_tier_3,
+        "company_type_Mid-size": company_type_mid,
+        "company_type_Startup": company_type_startup,
+        "cgpa_high": cgpa_high,
+        "cgpa_low": cgpa_low,
+        "exp_high": exp_high,
+        "exp_fresher": exp_fresher,
+        "skill_density": skill_density,
+        "cgpa_x_skills": cgpa_x_skills,
+        "exp_x_projects": exp_x_projects,
+        "exp_x_internships": exp_x_internships,
+        "skills_x_soft": skills_x_soft
+    }
 
-    return structured, skills
-
-
-def predict_resume(resume_text, user_data):
-    validation = validate_resume(resume_text)
-
-    if not validation["is_resume"]:
-        return {
-            "error": "Invalid resume format",
-            "validation": validation
-        }
-
-    features, skills = build_features(resume_text, user_data)
-
-    if len(features) != len(columns):
-        raise ValueError(f"Feature mismatch: expected {len(columns)}, got {len(features)}")
-
-    feature_dict = dict(zip(columns, features))
     ordered_features = [feature_dict[col] for col in columns]
 
-    arr = np.array([ordered_features])
+    return ordered_features, skills
+
+
+def predict_resume(resume_text, user_data, extracted):
+    features, skills = build_features(resume_text, user_data, extracted)
+
+    arr = np.array([features])
     arr = scaler.transform(arr)
 
     prob = model.predict_proba(arr)[0][1]
 
+    selected = prob > threshold
+
+    if prob >= threshold:
+        confidence = "High"
+    elif prob >= threshold - 0.1:
+        confidence = "Medium"
+    else:
+        confidence = "Low"
+
     return {
         "score": float(round(prob * 100, 2)),
-        "selected": bool(prob > threshold),
+        "selected": selected,
         "skills": skills,
-        "validation": validation
+        "confidence_level": confidence,
+        "probability": float(round(prob, 4))
     }

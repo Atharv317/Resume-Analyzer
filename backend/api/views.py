@@ -14,6 +14,28 @@ sys.path.append(os.path.join(BASE_DIR, "ML"))
 from src.predict import predict_resume
 from src.validation import validate_resume
 from src.extract import extract_all
+from src.skills import process_resume
+
+
+def count_languages(skills):
+    langs = {"python", "java", "c++", "javascript"}
+    return len([s for s in skills if s in langs])
+
+
+def to_float(val, fallback=0):
+    try:
+        return float(val)
+    except:
+        return fallback
+
+
+def get_val(request, key, extracted_val):
+    val = request.data.get(key)
+    try:
+        user_val = float(val)
+    except:
+        user_val = 0
+    return max(user_val, extracted_val)
 
 
 @api_view(['GET'])
@@ -42,7 +64,8 @@ def extract_text(file):
 
         return text.strip()
 
-    except:
+    except Exception as e:
+        print("Error extracting text:", e)
         return None
 
 
@@ -103,31 +126,28 @@ def analyze_resume(request):
 
     extracted = extract_all(resume_text)
 
-    def to_float(val, fallback=0):
-        try:
-            return float(val)
-        except:
-            return fallback
+    skill_data = process_resume(resume_text)
+    skills = skill_data["skills"]
 
     user_data = {
         "age": to_float(request.data.get("age")),
-        "education_level": to_float(request.data.get("education_level")),
-        "cgpa": to_float(request.data.get("cgpa"), extracted["cgpa"]),
-        "internships": to_float(request.data.get("internships"), extracted["internships"]),
-        "projects": to_float(request.data.get("projects"), extracted["projects"]),
-        "programming_languages": len(extracted["skills"]),
-        "certifications": to_float(request.data.get("certifications")),
-        "experience_years": to_float(request.data.get("experience_years"), extracted["experience_years"]),
+        "education_level": extracted.get("education_level", 0),
+        "cgpa": get_val(request, "cgpa", extracted["cgpa"]),
+        "internships": get_val(request, "internships", extracted["internships"]),
+        "projects": get_val(request, "projects", extracted["projects"]),
+        "experience_years": get_val(request, "experience_years", extracted["experience_years"]),
+        "programming_languages": count_languages(skills),
+        "certifications": extracted.get("certifications", 0),
         "hackathons": to_float(request.data.get("hackathons")),
         "research_papers": to_float(request.data.get("research_papers")),
-        "soft_skills_score": to_float(request.data.get("soft_skills_score")),
+        "soft_skills_score": extracted.get("soft_skills_score", 0),
         "university_tier_2": to_float(request.data.get("university_tier_2")),
         "university_tier_3": to_float(request.data.get("university_tier_3")),
         "company_type_mid": to_float(request.data.get("company_type_mid")),
         "company_type_startup": to_float(request.data.get("company_type_startup")),
     }
 
-    result = predict_resume(resume_text, user_data)
+    result = predict_resume(resume_text, user_data, extracted)
 
     result["extracted"] = extracted
     result["validation"] = validation
