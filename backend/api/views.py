@@ -13,6 +13,7 @@ sys.path.append(os.path.join(BASE_DIR, "ML"))
 
 from src.predict import predict_resume
 from src.validation import validate_resume
+from src.extract import extract_all
 
 
 @api_view(['GET'])
@@ -100,21 +101,23 @@ def analyze_resume(request):
             "details": validation.get("details", {})
         })
 
-    def to_float(val):
+    extracted = extract_all(resume_text)
+
+    def to_float(val, fallback=0):
         try:
             return float(val)
         except:
-            return 0.0
+            return fallback
 
     user_data = {
         "age": to_float(request.data.get("age")),
         "education_level": to_float(request.data.get("education_level")),
-        "cgpa": to_float(request.data.get("cgpa")),
-        "internships": to_float(request.data.get("internships")),
-        "projects": to_float(request.data.get("projects")),
-        "programming_languages": to_float(request.data.get("programming_languages")),
+        "cgpa": to_float(request.data.get("cgpa"), extracted["cgpa"]),
+        "internships": to_float(request.data.get("internships"), extracted["internships"]),
+        "projects": to_float(request.data.get("projects"), extracted["projects"]),
+        "programming_languages": len(extracted["skills"]),
         "certifications": to_float(request.data.get("certifications")),
-        "experience_years": to_float(request.data.get("experience_years")),
+        "experience_years": to_float(request.data.get("experience_years"), extracted["experience_years"]),
         "hackathons": to_float(request.data.get("hackathons")),
         "research_papers": to_float(request.data.get("research_papers")),
         "soft_skills_score": to_float(request.data.get("soft_skills_score")),
@@ -125,5 +128,8 @@ def analyze_resume(request):
     }
 
     result = predict_resume(resume_text, user_data)
+
+    result["extracted"] = extracted
+    result["validation"] = validation
 
     return Response(result)

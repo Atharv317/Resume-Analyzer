@@ -150,7 +150,7 @@ async function analyze() {
     let warn = "";
     let cls = "success";
 
-    if (data.confidence && data.confidence < 0.6) {
+    if (data.validation && data.validation.confidence < 0.6) {
         warn = "<p><b>⚠️ Low quality resume</b></p>";
         cls = "warning";
     }
@@ -160,7 +160,16 @@ async function analyze() {
             <h3>Score: ${data.score || 0}%</h3>
             <h4>${data.selected ? "✅ Selected" : "❌ Rejected"}</h4>
             ${warn}
+
             <p><b>Skills:</b> ${(data.skills && data.skills.length) ? data.skills.join(", ") : "No skills detected"}</p>
+
+            <hr/>
+
+            <h4>📊 Extracted Data</h4>
+            <p>Projects: ${data.extracted?.projects ?? 0}</p>
+            <p>Internships: ${data.extracted?.internships ?? 0}</p>
+            <p>Experience: ${data.extracted?.experience_years ?? 0} yrs</p>
+            <p>CGPA: ${data.extracted?.cgpa ?? 0}</p>
         </div>
     `;
 }
