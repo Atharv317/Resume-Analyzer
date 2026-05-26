@@ -13,20 +13,57 @@ def extract_projects(text):
     lines = [l.strip() for l in proj_text.split("\n") if l.strip()]
 
     count = 0
+
     for line in lines:
-        if len(line.split()) > 3 and ("—" in line or " - " in line):
+
+        if line.startswith("•"):
+            continue
+
+        words = line.split()
+
+        if len(words) < 2 or len(words) > 12:
+            continue
+
+        lower = line.lower()
+
+        tech_words = [
+            "python", "java", "django", "react",
+            "pandas", "numpy", "tensorflow",
+            "scikit", "html", "css", "javascript"
+        ]
+
+        tech_count = sum(
+            1 for t in tech_words if t in lower
+        )
+
+        if tech_count >= 3:
+            continue
+
+        special_chars = ["|", "—", "-", ":"]
+
+        has_separator = any(c in line for c in special_chars)
+
+        title_case_ratio = sum(
+            1 for w in words if w[:1].isupper()
+        ) / len(words)
+
+        if has_separator or title_case_ratio > 0.6:
             count += 1
 
-    return min(count, 6)
+    return min(count, 10)
+
 
 
 def extract_internships(text):
     sections = split_sections(text)
     exp_text = sections.get("experience", "").lower()
 
-    matches = re.findall(r'\b(internship|intern|trainee|summer intern)\b', exp_text)
+    matches = re.findall(
+        r'\b(internship|intern|trainee|summer intern)\b',
+        exp_text
+    )
 
-    return len(set(matches))
+    return len(matches)
 
 
 def extract_experience(text):
@@ -41,24 +78,33 @@ def extract_experience(text):
     total_years = 0.0
 
     for start, end in date_ranges:
-        try:
-            start_dt = datetime.strptime(start, "%b %Y")
-        except:
+
+        start_dt = None
+        end_dt = None
+
+        for fmt in ["%b %Y", "%B %Y"]:
             try:
-                start_dt = datetime.strptime(start, "%B %Y")
+                start_dt = datetime.strptime(start, fmt)
+                break
             except:
-                continue
+                pass
+
+        if not start_dt:
+            continue
 
         if "present" in end:
             end_dt = datetime.now()
+
         else:
-            try:
-                end_dt = datetime.strptime(end, "%b %Y")
-            except:
+            for fmt in ["%b %Y", "%B %Y"]:
                 try:
-                    end_dt = datetime.strptime(end, "%B %Y")
+                    end_dt = datetime.strptime(end, fmt)
+                    break
                 except:
-                    continue
+                    pass
+
+        if not end_dt:
+            continue
 
         total_years += (end_dt - start_dt).days / 365
 
@@ -67,12 +113,20 @@ def extract_experience(text):
 
 def extract_cgpa(text):
     text = text.lower()
-    match = re.search(r'(cgpa|gpa)[^0-9]*([0-9]\.?[0-9]{0,2})', text)
+
+    match = re.search(
+        r'(cgpa|gpa)[^0-9]*([0-9]\.?[0-9]{0,2})',
+        text
+    )
+
     if match:
         value = float(match.group(2))
+
         if value <= 4:
             return round((value / 4) * 10, 2)
+
         return value
+
     return 0
 
 
@@ -81,10 +135,21 @@ def extract_education_level(text):
 
     if "phd" in text:
         return 4
-    elif "master" in text or "m.tech" in text or "msc" in text:
+
+    elif (
+        "master" in text or
+        "m.tech" in text or
+        "msc" in text
+    ):
         return 3
-    elif "b.tech" in text or "bachelor" in text or "b.e" in text:
+
+    elif (
+        "b.tech" in text or
+        "bachelor" in text or
+        "b.e" in text
+    ):
         return 2
+
     elif "diploma" in text:
         return 1
 
@@ -93,11 +158,17 @@ def extract_education_level(text):
 
 def extract_certifications(text):
     keywords = [
-        "certified", "certificate", "aws", "google cloud",
-        "coursera", "udemy", "azure"
+        "certified",
+        "certificate",
+        "aws",
+        "google cloud",
+        "coursera",
+        "udemy",
+        "azure"
     ]
 
     text = text.lower()
+
     count = 0
 
     for k in keywords:
@@ -109,11 +180,16 @@ def extract_certifications(text):
 
 def extract_soft_skills(text):
     skills = [
-        "communication", "teamwork", "leadership",
-        "problem solving", "adaptability", "collaboration"
+        "communication",
+        "teamwork",
+        "leadership",
+        "problem solving",
+        "adaptability",
+        "collaboration"
     ]
 
     text = text.lower()
+
     score = 0
 
     for s in skills:

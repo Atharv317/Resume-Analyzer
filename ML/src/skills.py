@@ -6,7 +6,8 @@ SKILLS = [
     "machine learning", "deep learning", "nlp",
     "tensorflow", "pytorch", "sklearn",
     "sql", "mongodb", "mysql",
-    "data analysis", "pandas", "numpy", "c#"
+    "data analysis", "pandas", "numpy", "c#","scikit-learn",
+    "feature engineering","fastapi","restapi",
 ]
 
 SYNONYMS = {
