@@ -94,7 +94,11 @@
 <script>
 
 function cleanText(text) {
-    return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+    return text
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\r/g, "")
+        .trim();
 }
 
 function getScoreColor(score) {
@@ -151,19 +155,24 @@ async function uploadResume() {
 }
 
 async function analyze() {
-    let fileInput = document.getElementById("file").files[0];
-    let resumeText = cleanText(document.getElementById("resume_text").value);
+    let resumeText = cleanText(
+        document.getElementById("resume_text").value
+    );
 
-    if (!fileInput && !resumeText) {
+    if (!resumeText) {
+
         document.getElementById("result").innerHTML =
             "<div class='result error'><h3>❌ Please upload or paste resume</h3></div>";
+
         return;
     }
 
     let formData = new FormData();
 
-    if (fileInput) formData.append("file", fileInput);
-    else formData.append("resume_text", resumeText);
+    formData.append(
+        "resume_text",
+        resumeText
+    );
 
     let age = document.getElementById("age").value;
     if (age) formData.append("age", age);

@@ -94,12 +94,8 @@ def upload_resume(request):
 @api_view(['POST'])
 @parser_classes([JSONParser, MultiPartParser, FormParser])
 def analyze_resume(request):
-    file = request.FILES.get("file")
-
-    if file:
-        resume_text = extract_text(file)
-    else:
-        resume_text = request.data.get("resume_text")
+    
+    resume_text = request.data.get("resume_text")
 
     if resume_text is None:
         return Response({"error": "Please upload a valid PDF or DOCX file"}, status=400)

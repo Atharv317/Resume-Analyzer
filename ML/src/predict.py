@@ -2,6 +2,7 @@ import os
 import joblib
 import json
 import numpy as np
+
 from src.skills import process_resume
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,25 +18,79 @@ with open(os.path.join(MODEL_DIR, "threshold.txt")) as f:
     threshold = float(f.read())
 
 
+LANGUAGES = {
+    "python",
+    "java",
+    "c++",
+    "javascript",
+    "typescript",
+    "go",
+    "rust",
+    "c#",
+    "php"
+}
+
+
+def safe_clip(value, low=0, high=100):
+    return max(low, min(value, high))
+
+
 def build_features(resume_text, user_data, extracted):
+
     skills = process_resume(resume_text)["skills"]
 
-    age = user_data.get("age", 0)
-    education_level = user_data.get("education_level", 0)
-    cgpa = user_data.get("cgpa", 0)
-    internships = user_data.get("internships", 0)
-    projects = user_data.get("projects", 0)
-    programming_languages = user_data.get("programming_languages", 0)
-    certifications = user_data.get("certifications", 0)
-    experience_years = user_data.get("experience_years", 0)
-    soft_skills_score = user_data.get("soft_skills_score", 0)
+    age = safe_clip(user_data.get("age", 0), 0, 100)
+
+    education_level = safe_clip(
+        user_data.get("education_level", 0),
+        0,
+        5
+    )
+
+    cgpa = safe_clip(user_data.get("cgpa", 0), 0, 10)
+
+    internships = safe_clip(
+        user_data.get("internships", 0),
+        0,
+        15
+    )
+
+    projects = safe_clip(
+        user_data.get("projects", 0),
+        0,
+        20
+    )
+
+    certifications = safe_clip(
+        user_data.get("certifications", 0),
+        0,
+        20
+    )
+
+    experience_years = safe_clip(
+        user_data.get("experience_years", 0),
+        0,
+        40
+    )
+
+    soft_skills_score = safe_clip(
+        user_data.get("soft_skills_score", 0),
+        0,
+        20
+    )
 
     resume_length_words = len(resume_text.split())
 
     university_tier_2 = user_data.get("university_tier_2", 0)
     university_tier_3 = user_data.get("university_tier_3", 0)
+
     company_type_mid = user_data.get("company_type_mid", 0)
     company_type_startup = user_data.get("company_type_startup", 0)
+
+    programming_languages = len([
+        s for s in skills
+        if s.lower() in LANGUAGES
+    ])
 
     skills_score = len(skills)
 
@@ -79,25 +134,35 @@ def build_features(resume_text, user_data, extracted):
         "skills_x_soft": skills_x_soft
     }
 
-    ordered_features = [feature_dict[col] for col in columns]
+    ordered_features = [
+        feature_dict[col]
+        for col in columns
+    ]
 
     return ordered_features, skills
 
 
 def predict_resume(resume_text, user_data, extracted):
-    features, skills = build_features(resume_text, user_data, extracted)
+
+    features, skills = build_features(
+        resume_text,
+        user_data,
+        extracted
+    )
 
     arr = np.array([features])
     arr = scaler.transform(arr)
 
     prob = model.predict_proba(arr)[0][1]
 
-    selected = prob > threshold
+    selected = prob >= threshold
 
     if prob >= threshold:
         confidence = "High"
+
     elif prob >= threshold - 0.1:
         confidence = "Medium"
+
     else:
         confidence = "Low"
 

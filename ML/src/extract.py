@@ -156,9 +156,16 @@ def extract_experience(text):
         sections.get("work experience", "")
     ).lower()
 
-    date_ranges = re.findall(
-        r'([A-Za-z]{3,9}\s*\d{4})\s*[-–]\s*([A-Za-z]{3,9}\s*\d{4}|present)',
+    exp_text = re.sub(
+        r'([A-Za-z]{3,9})(\d{4})',
+        r'\1 \2',
         exp_text
+    )
+
+    date_ranges = re.findall(
+    r'([A-Za-z]{3,9}\s*\d{4})\s*[-–]\s*(present|current|now|[A-Za-z]{3,9}\s*\d{4})',
+    exp_text,
+    re.IGNORECASE
     )
 
     total_years = 0.0
@@ -180,7 +187,7 @@ def extract_experience(text):
         if not start_dt:
             continue
 
-        if "present" in end:
+        if end.lower() in ["present", "current", "now"]:
             end_dt = datetime.now()
 
         else:
