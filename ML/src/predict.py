@@ -2,8 +2,9 @@ import os
 import joblib
 import json
 import numpy as np
+import pandas as pd
 
-from src.skills import process_resume
+from ML.src.skills import process_resume
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "../models")
@@ -150,7 +151,11 @@ def predict_resume(resume_text, user_data, extracted):
         extracted
     )
 
-    arr = np.array([features])
+    arr = pd.DataFrame(
+        [features],
+        columns=columns
+    )
+
     arr = scaler.transform(arr)
 
     prob = model.predict_proba(arr)[0][1]

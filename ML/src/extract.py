@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from src.section_parser import split_sections
+from ML.src.section_parser import split_sections
 
 
 def extract_projects(text):
