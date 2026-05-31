@@ -1,24 +1,73 @@
 import re
 
 SKILLS = [
-    "python", "java", "c++", "ruby", "javascript",
-    "django", "flask", "react", "node", "express",
-    "machine learning", "deep learning", "nlp",
-    "tensorflow", "pytorch", "sklearn",
-    "sql", "mongodb", "mysql",
-    "data analysis", "pandas", "numpy", "c#","scikit-learn",
-    "feature engineering","fastapi","restapi",
+
+    # Languages
+    "python", "java", "c++", "c#", "javascript",
+    "typescript", "sql",
+
+    # Backend
+    "django", "flask", "fastapi",
+    "node", "express",
+    "spring", "spring boot",
+
+    # Frontend
+    "react", "nextjs",
+    "html", "css",
+
+    # Databases
+    "mysql", "postgresql",
+    "mongodb", "sqlite",
+
+    # ML / AI
+    "machine learning",
+    "deep learning",
+    "nlp",
+    "computer vision",
+    "feature engineering",
+    "data analysis",
+
+    # Libraries
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "tensorflow",
+    "pytorch",
+
+    # DevOps / Tools
+    "docker",
+    "git",
+    "github",
+    "linux",
+    "aws",
+
+    # APIs
+    "rest api",
+    "restful api"
 ]
 
 SYNONYMS = {
+
     "ml": "machine learning",
-    "dl": "deep learning",
     "ai": "machine learning",
+    "dl": "deep learning",
+
     "np": "numpy",
     "pd": "pandas",
+
     "js": "javascript",
+    "ts": "typescript",
+
     "nodejs": "node",
-    "reactjs": "react"
+    "reactjs": "react",
+
+    "scikit learn": "scikit-learn",
+    "sklearn": "scikit-learn",
+
+    "postgres": "postgresql",
+
+    "restapi": "rest api",
+    "restful api": "rest api"
 }
 
 

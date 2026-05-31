@@ -53,7 +53,7 @@ def extract_projects(text):
 
         has_separator = any(
             c in line
-            for c in ["|", "—", "-", "–", ":"]
+            for c in ["|", "—", "-", "–", ":","—"]
         )
 
         if tech_count >= 2 and (

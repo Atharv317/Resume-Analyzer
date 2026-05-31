@@ -128,7 +128,7 @@ def upload_resume(request):
 
     logger.info("Resume upload request received")
 
-    file = request.FILES.get('file')
+    file = request.FILES.get("file")
 
     if not file:
 
@@ -138,25 +138,57 @@ def upload_resume(request):
             "error": "File not received"
         }, status=400)
 
+    allowed_extensions = [".pdf", ".docx"]
+
+    ext = os.path.splitext(file.name)[1].lower()
+
+    if ext not in allowed_extensions:
+
+        logger.warning(
+            f"Invalid file type uploaded: {file.name}"
+        )
+
+        return Response({
+            "error": "Only PDF and DOCX files are allowed"
+        }, status=400)
+
+    max_size_mb = 5
+
+    if file.size>max_size_mb*1024*1024:
+
+        logger.warning(
+            f"File too large: {file.name}"
+        )
+
+        return Response({
+            "error": "File size exceeds 5 MB limit"
+        }, status=400)
+
     text = extract_text(file)
 
     if text is None:
 
-        logger.warning("Invalid file format uploaded")
+        logger.error(
+            f"Text extraction failed: {file.name}"
+        )
 
         return Response({
-            "error": "Invalid file format. Upload PDF or DOCX"
+            "error": "Failed to read the uploaded file"
         }, status=400)
 
     if not text.strip():
 
-        logger.warning("Empty or unreadable file")
+        logger.warning(
+            f"Empty file uploaded: {file.name}"
+        )
 
         return Response({
             "error": "Empty or unreadable file"
         }, status=400)
 
-    logger.info("Resume uploaded successfully")
+    logger.info(
+        f"Resume uploaded successfully: {file.name}"
+    )
 
     return Response({
         "message": "Uploaded successfully",
